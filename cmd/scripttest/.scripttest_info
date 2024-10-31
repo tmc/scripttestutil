@@ -1,0 +1,26 @@
+[{
+        "name": "scripttest",
+        "summary": "Run scripttest files and manage test scaffolding",
+        "args": "[-v] [-stream] [-p pattern] <command> [args...]"
+      },
+      {
+        "name": "scripttest test",
+        "summary": "Run scripttest files",
+        "args": "[pattern]"
+      },
+      {
+        "name": "scripttest run",
+        "summary": "Alias for 'test' command",
+        "args": "[pattern]"
+      },
+      {
+        "name": "scripttest scaffold",
+        "summary": "Create scripttest scaffold in directory",
+        "args": "[dir]"
+      },
+      {
+        "name": "scripttest infer",
+        "summary": "Infer command info in directory",
+        "args": "[dir]"
+      }
+]
