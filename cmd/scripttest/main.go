@@ -14,6 +14,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	_ "rsc.io/script/scripttest" // not strictly necessary but nice for go odc tool
 )
 
 func usage() {

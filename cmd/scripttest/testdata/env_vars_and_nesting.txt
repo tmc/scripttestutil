@@ -1,0 +1,22 @@
+# Test environment variable propagation to inferred commands
+env TEST_ENV_VAR=expected_value
+env TEST_ENV_VAR
+stdout 'TEST_ENV_VAR=expected_value'
+
+scripttest test
+stdout 'PASS'
+
+-- .scripttest_info --
+[
+  {
+    "name": "bash",
+    "summary": "a shell",
+    "args": "[variable]"
+  }
+]
+-- testdata/env_handling.txt --
+env TEST_ENV_VAR=expected_value2
+bash -c 'env|grep TEST_ENV_VAR'
+stdout 'expected_value2'
+exec bash -c 'env|grep TEST_ENV_VAR'
+stdout 'expected_value2'

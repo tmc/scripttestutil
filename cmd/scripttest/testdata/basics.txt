@@ -1,0 +1,12 @@
+# basics showing scripttest behavior
+? scripttest
+stderr 'Usage:'
+
+scripttest test
+stdout 'PASS'
+
+-- .scripttest_info --
+[{"name":"bash"}]
+-- testdata/hello.txt --
+bash -c 'echo hello'
+stdout 'hello'
