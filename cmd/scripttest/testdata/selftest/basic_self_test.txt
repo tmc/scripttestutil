@@ -1,0 +1,36 @@
+# Basic test file for scripttest
+# Tests basic functionality without external dependencies
+
+# Test simple echo command
+echo "Testing basic echo"
+stdout 'Testing basic echo'
+! stderr .
+
+# Test multiple arguments
+echo Hello World
+stdout 'Hello World'
+! stderr .
+
+# Test another echo
+echo "Hello from Self-Test!"
+stdout 'Hello from Self-Test!'
+! stderr .
+
+# Test environment variables
+env TEST_ENV_VAR=self_test_value
+env | grep TEST_ENV_VAR
+stdout 'TEST_ENV_VAR=self_test_value'
+
+# Setup nested file for testing file embedding
+-- nested_file.txt --
+This is content from an embedded file
+in the self-test.
+
+-- .scripttest_info --
+[
+  {
+    "name": "scripttest",
+    "summary": "A tool to run script tests",
+    "args": "[options] command [args...]"
+  }
+]

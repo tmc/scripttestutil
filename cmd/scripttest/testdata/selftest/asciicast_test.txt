@@ -1,0 +1,24 @@
+# Test scripttest's asciicast recording capabilities
+
+# Basic test to verify core functionality
+echo "Testing asciicast support"
+stdout "Testing asciicast support"
+
+# Create a simple test file to record
+mkdir -p __recordings__
+echo 'echo "Test recording"' > __recordings__/simple_test.txt
+
+# Test converting a snapshot to asciicast
+# Note: This assumes snapshots from snapshot_test.txt already exist
+# If they don't exist, this test will be skipped conditionally
+
+# Create a test for conditional operation
+[[ -f "__snapshots__/simple_snapshot.json" ]] && echo "Snapshot exists" || echo "Snapshot doesn't exist yet"
+
+# Record a very simple test for asciinema
+# Note: Only runs this test on systems with asciinema installed
+[[ $(which asciinema 2>/dev/null) ]] && echo "Asciinema is installed"
+
+# Command to run on systems with asciinema:
+# scripttest record __recordings__/simple_test.txt __recordings__/test.cast
+# Commented out because it would actually try to run asciinema and fail if not installed

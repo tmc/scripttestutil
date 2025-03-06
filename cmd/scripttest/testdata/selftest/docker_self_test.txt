@@ -1,0 +1,37 @@
+# Test scripttest's Docker capabilities
+# This test should be run with: scripttest -docker test testdata/selftest/docker_self_test.txt
+
+# Verify we're running in a container
+[ -f /.dockerenv ] && echo "Running in Docker" || echo "Not in Docker"
+stdout 'Running in Docker'
+
+# Test basic Docker environment
+echo "Hello from Docker!"
+stdout 'Hello from Docker!'
+
+# Test file operations in Docker
+touch docker_test_file.txt
+exists docker_test_file.txt
+echo "Docker test content" > docker_test_file.txt
+cat docker_test_file.txt
+stdout 'Docker test content'
+
+# Check Docker image has bash
+which bash
+
+# Add snapshot support
+mkdir -p __snapshots__
+snapshot __snapshots__/docker_snapshot.json
+echo "Snapshot from Docker environment"
+stdout "Snapshot from Docker environment"
+
+-- Dockerfile --
+FROM golang:alpine
+# Install testing tools
+RUN apk add --no-cache bash curl jq
+# Set up working directory
+WORKDIR /app
+# Copy test files
+COPY . .
+# Default command
+CMD ["go", "test", "-v"]

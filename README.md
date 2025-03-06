@@ -18,7 +18,7 @@ go install https://github.com/tmc/scripttestutil/cmd/scripttest@latest
 
 ## Usage
 
-scriptest usage:
+scripttest usage:
 
 ### Examples
 
@@ -27,10 +27,38 @@ scriptest usage:
    scripttest infer
    ```
 
-1. Run tests:
+2. Run tests:
    ```
    scripttest test
    ```
+
+3. Run tests in Docker:
+   ```
+   scripttest -docker test
+   ```
+
+4. Record a test execution as an asciicast:
+   ```
+   scripttest record testdata/example.txt recordings/example.cast
+   ```
+
+5. Play an asciicast recording:
+   ```
+   scripttest play-cast recordings/example.cast
+   ```
+
+### Self-Tests
+
+The project includes a suite of self-tests that verify scripttest's functionality using scripttest itself. These serve both as tests and as examples of how to use various features.
+
+To run the self-tests:
+
+```
+cd cmd/scripttest/testdata/selftest
+./run_all_tests.sh
+```
+
+See the [self-tests README](cmd/scripttest/testdata/selftest/README.md) for more details.
 
 ## Contributing
 

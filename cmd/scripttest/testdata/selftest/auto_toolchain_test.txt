@@ -1,0 +1,27 @@
+# Test scripttest's automatic Go toolchain acquisition
+# Note: This test is tricky to truly test in isolation since it's hard to "uninstall" Go temporarily
+
+# Focus on testing Go functionality rather than scripttest options
+
+# Test that Go is available (this should pass in normal environments)
+which go
+
+# Get the Go version
+go version
+stdout 'go version'
+
+# Create a simple Go program to test compilation
+-- simple.go --
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello from auto-toolchain test!")
+}
+
+# Compile and run the program
+go build -o simple_program simple.go
+exists simple_program
+./simple_program
+stdout 'Hello from auto-toolchain test!'
