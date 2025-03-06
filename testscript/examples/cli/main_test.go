@@ -2,10 +2,11 @@ package main_test
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
-	"github.com/tmc/scripttestutil/bridge"
+	"github.com/tmc/scripttestutil/testscript"
 )
 
 func TestMain(m *testing.M) {
@@ -24,14 +25,8 @@ func setup() {
 	os.MkdirAll("testdata", 0755)
 	
 	// Build the CLI for testing
-	os.Setenv("GOOS", "")
-	os.Setenv("GOARCH", "")
-	
-	// Simple build command - in a real project, use proper build flags
-	os.Chdir("..")
-	os.Chdir("cli")
-	os.Exec("go", "build", "-o", "bin/cli-app", ".")
-	os.Chdir("..")
+	cmd := exec.Command("go", "build", "-o", "bin/cli-app", ".")
+	cmd.Run()
 	
 	// Create test files
 	createTestFiles()
@@ -84,25 +79,25 @@ stdout 'Extra arguments: arg1, arg2'
 	os.WriteFile("testdata/flags.txt", []byte(flagsTest), 0644)
 }
 
-// TestCLIWithBridge demonstrates testing a CLI application with the bridge
-func TestCLIWithBridge(t *testing.T) {
+// TestCLIWithTestscript demonstrates testing a CLI application with testscript
+func TestCLIWithTestscript(t *testing.T) {
 	// Configure test options
-	opts := bridge.DefaultOptions()
+	opts := testscript.DefaultOptions()
 	opts.Verbose = testing.Verbose()
 	
 	// Run the tests
-	bridge.RunPattern(t, "testdata/*.txt", opts)
+	testscript.Run(t, "testdata/*.txt", opts)
 }
 
 // TestSpecificFeatures demonstrates testing specific features of the CLI
 func TestSpecificFeatures(t *testing.T) {
 	t.Run("BasicGreeting", func(t *testing.T) {
-		opts := bridge.DefaultOptions()
-		bridge.RunFile(t, "testdata/basic.txt", opts)
+		opts := testscript.DefaultOptions()
+		testscript.RunFile(t, "testdata/basic.txt", opts)
 	})
 	
 	t.Run("FlagHandling", func(t *testing.T) {
-		opts := bridge.DefaultOptions()
-		bridge.RunFile(t, "testdata/flags.txt", opts)
+		opts := testscript.DefaultOptions()
+		testscript.RunFile(t, "testdata/flags.txt", opts)
 	})
 }

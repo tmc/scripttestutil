@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/tmc/scripttestutil/bridge"
+	"github.com/tmc/scripttestutil/testscript"
 )
 
 func TestMain(m *testing.M) {
@@ -24,14 +24,14 @@ func setupTests() {
 
 	// Create a basic test file
 	basicTest := `# Basic echo test
-echo "Hello from scripttest bridge!"
-stdout 'Hello from scripttest bridge!'
+echo "Hello from testscript!"
+stdout 'Hello from testscript!'
 ! stderr .
 
 # Test with environment variable
-env BRIDGE_TEST=working
-env | grep BRIDGE_TEST
-stdout 'BRIDGE_TEST=working'
+env TST_VAR=working
+env | grep TST_VAR
+stdout 'TST_VAR=working'
 `
 	os.WriteFile(filepath.Join("testdata", "basic.txt"), []byte(basicTest), 0644)
 
@@ -45,10 +45,10 @@ exists test_file.txt
 	os.WriteFile(filepath.Join("testdata", "file_test.txt"), []byte(fileTest), 0644)
 }
 
-// TestWithBridge demonstrates how to use the bridge package
-func TestWithBridge(t *testing.T) {
+// TestWithTestscript demonstrates how to use the testscript package
+func TestWithTestscript(t *testing.T) {
 	// Create options with verbose output if go test -v is used
-	opts := bridge.DefaultOptions()
+	opts := testscript.DefaultOptions()
 	opts.Verbose = testing.Verbose()
 
 	// Set some environment variables for the tests
@@ -57,17 +57,17 @@ func TestWithBridge(t *testing.T) {
 	}
 
 	// Run all tests in the testdata directory
-	bridge.RunDir(t, "testdata", opts)
+	testscript.RunDir(t, "testdata", opts)
 }
 
 // TestSingleFile demonstrates running a single test file
 func TestSingleFile(t *testing.T) {
-	opts := bridge.DefaultOptions()
-	bridge.RunFile(t, "testdata/basic.txt", opts)
+	opts := testscript.DefaultOptions()
+	testscript.RunFile(t, "testdata/basic.txt", opts)
 }
 
 // TestPattern demonstrates running tests matching a pattern
 func TestPattern(t *testing.T) {
-	opts := bridge.DefaultOptions()
-	bridge.RunPattern(t, "testdata/*_test.txt", opts)
+	opts := testscript.DefaultOptions()
+	testscript.Run(t, "testdata/*_test.txt", opts)
 }

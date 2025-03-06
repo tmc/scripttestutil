@@ -1,6 +1,6 @@
-// Package bridge provides a clean connection between Go's testing framework and scripttest.
+// Package testscript provides a clean connection between Go's testing framework and scripttest.
 // It allows scripttest tests to be run as part of standard Go test suites.
-package bridge
+package testscript
 
 import (
 	"bytes"
@@ -15,8 +15,8 @@ import (
 	"rsc.io/script/scripttest"
 )
 
-// TestOptions defines configuration options for running scripttest tests.
-type TestOptions struct {
+// Options defines configuration options for running scripttest tests.
+type Options struct {
 	// Pattern is the glob pattern to match test files (default: "testdata/*.txt")
 	Pattern string
 
@@ -40,8 +40,8 @@ type TestOptions struct {
 }
 
 // DefaultOptions returns the default test options.
-func DefaultOptions() TestOptions {
-	return TestOptions{
+func DefaultOptions() Options {
+	return Options{
 		Pattern:         "testdata/*.txt",
 		UseDocker:       false,
 		DockerImage:     "golang:latest",
@@ -54,12 +54,12 @@ func DefaultOptions() TestOptions {
 
 // Runner manages the execution of scripttest tests using Go's testing package.
 type Runner struct {
-	Options TestOptions
+	opts Options
 }
 
 // NewRunner creates a new scripttest runner with the provided options.
-func NewRunner(opts TestOptions) *Runner {
-	return &Runner{Options: opts}
+func NewRunner(opts Options) *Runner {
+	return &Runner{opts: opts}
 }
 
 // Run executes scripttest tests matched by the pattern.
@@ -71,24 +71,24 @@ func (r *Runner) Run(t *testing.T) {
 	}
 
 	// Create a temporary directory for this test run
-	tempDir, err := os.MkdirTemp("", "scripttest-bridge-*")
+	tempDir, err := os.MkdirTemp("", "scripttest-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
 	defer os.RemoveAll(tempDir)
 
 	// Find all matching test files
-	matches, err := filepath.Glob(r.Options.Pattern)
+	matches, err := filepath.Glob(r.opts.Pattern)
 	if err != nil {
-		t.Fatalf("Invalid pattern %q: %v", r.Options.Pattern, err)
+		t.Fatalf("Invalid pattern %q: %v", r.opts.Pattern, err)
 	}
 	if len(matches) == 0 {
-		t.Fatalf("No files match pattern %q", r.Options.Pattern)
+		t.Fatalf("No files match pattern %q", r.opts.Pattern)
 	}
 
 	// Create snapshot directory if needed
-	if r.Options.UpdateSnapshots {
-		snapshotDir := r.Options.SnapshotDir
+	if r.opts.UpdateSnapshots {
+		snapshotDir := r.opts.SnapshotDir
 		if !filepath.IsAbs(snapshotDir) {
 			snapshotDir = filepath.Join(origDir, snapshotDir)
 		}
@@ -145,12 +145,12 @@ func (r *Runner) runTest(t *testing.T, testFile, testDir string) error {
 	}
 
 	// Add user-defined environment variables
-	for k, v := range r.Options.EnvVars {
+	for k, v := range r.opts.EnvVars {
 		env = append(env, k+"="+v)
 	}
 
 	// Set update snapshots environment variable if needed
-	if r.Options.UpdateSnapshots {
+	if r.opts.UpdateSnapshots {
 		env = append(env, "UPDATE_SNAPSHOTS=1")
 	}
 
@@ -158,7 +158,7 @@ func (r *Runner) runTest(t *testing.T, testFile, testDir string) error {
 	cmds := scripttest.DefaultCmds()
 
 	// Create a snapshot handler
-	setupSnapshotCommand(cmds, r.Options.SnapshotDir)
+	setupSnapshotCommand(cmds, r.opts.SnapshotDir)
 
 	// Start with default conditions
 	conds := scripttest.DefaultConds()
@@ -170,7 +170,7 @@ func (r *Runner) runTest(t *testing.T, testFile, testDir string) error {
 	engine := &script.Engine{
 		Cmds:  cmds,
 		Conds: conds,
-		Quiet: !r.Options.Verbose && !testing.Verbose(),
+		Quiet: !r.opts.Verbose && !testing.Verbose(),
 	}
 
 	// Configure test context
@@ -204,15 +204,15 @@ func (r *Runner) runTest(t *testing.T, testFile, testDir string) error {
 	// Capture stdout and stderr for the test output
 	var stdout, stderr bytes.Buffer
 	oldStdout, oldStderr := os.Stdout, os.Stderr
-	if !r.Options.Verbose && !testing.Verbose() {
+	if !r.opts.Verbose && !testing.Verbose() {
 		os.Stdout, os.Stderr = &stdout, &stderr
 		defer func() { os.Stdout, os.Stderr = oldStdout, oldStderr }()
 	}
 
 	// Run the test
-	if r.Options.UseDocker {
+	if r.opts.UseDocker {
 		// TODO: Implement Docker support by calling the appropriate functions
-		return fmt.Errorf("Docker support not yet implemented in bridge")
+		return fmt.Errorf("Docker support not yet implemented in testscript")
 	} else {
 		// Change to the test directory
 		oldDir, err := os.Getwd()
@@ -281,21 +281,21 @@ func setupPlatformConditions(conds map[string]script.Cond) {
 	})
 }
 
-// RunFile is a convenience function to run a single scripttest file.
-func RunFile(t *testing.T, file string, opts TestOptions) {
-	runner := NewRunner(opts)
-	runner.RunTest(t, file)
-}
-
-// RunPattern is a convenience function to run all scripttest files matching a pattern.
-func RunPattern(t *testing.T, pattern string, opts TestOptions) {
+// Run is a convenience function to run scripttest files matching a pattern.
+func Run(t *testing.T, pattern string, opts Options) {
 	opts.Pattern = pattern
 	runner := NewRunner(opts)
 	runner.Run(t)
 }
 
+// RunFile is a convenience function to run a single scripttest file.
+func RunFile(t *testing.T, file string, opts Options) {
+	runner := NewRunner(opts)
+	runner.RunTest(t, file)
+}
+
 // RunDir is a convenience function to run all scripttest files in a directory.
-func RunDir(t *testing.T, dir string, opts TestOptions) {
+func RunDir(t *testing.T, dir string, opts Options) {
 	pattern := filepath.Join(dir, "*.txt")
-	RunPattern(t, pattern, opts)
+	Run(t, pattern, opts)
 }

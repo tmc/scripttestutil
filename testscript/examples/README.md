@@ -1,6 +1,6 @@
-# Scripttest Bridge Examples
+# Testscript Examples
 
-This directory contains examples of how to use the scripttest bridge package for testing various types of applications.
+This directory contains examples of how to use the testscript package for testing various types of applications.
 
 ## Examples
 
@@ -11,7 +11,7 @@ The `simple` directory contains a basic example showing how to:
 - Run all tests in a directory
 - Run individual test files
 - Run tests matching a pattern
-- Use different bridge options
+- Use different testscript options
 
 Run the example with:
 ```bash
@@ -50,7 +50,7 @@ go test -v
    - Makes it easier to run specific tests with `go test -run`
 
 4. **Manage Test Environment**:
-   - Use bridge.TestOptions.EnvVars to set environment variables
+   - Use testscript.Options.EnvVars to set environment variables
    - Create isolated test environments when needed
 
 5. **Use Verbose Mode Effectively**:

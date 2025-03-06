@@ -1,25 +1,25 @@
-package bridge_test
+package testscript_test
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/tmc/scripttestutil/bridge"
+	"github.com/tmc/scripttestutil/testscript"
 )
 
-// TestBasicUsage demonstrates the basic usage of the bridge package.
+// TestBasicUsage demonstrates the basic usage of the testscript package.
 func TestBasicUsage(t *testing.T) {
 	// Skip this test when running go test
 	// Remove this line when you want to actually run the test
 	t.Skip("Example test - skipped by default")
 
 	// Setup test options
-	opts := bridge.DefaultOptions()
+	opts := testscript.DefaultOptions()
 	opts.Verbose = testing.Verbose()
 
 	// Run a single test file
-	bridge.RunFile(t, "testdata/basic.txt", opts)
+	testscript.RunFile(t, "testdata/basic.txt", opts)
 }
 
 // TestWithCustomOptions demonstrates using custom options.
@@ -28,7 +28,7 @@ func TestWithCustomOptions(t *testing.T) {
 	t.Skip("Example test - skipped by default")
 
 	// Setup custom options
-	opts := bridge.DefaultOptions()
+	opts := testscript.DefaultOptions()
 	opts.Verbose = true
 	opts.UpdateSnapshots = true
 	opts.EnvVars = map[string]string{
@@ -37,7 +37,7 @@ func TestWithCustomOptions(t *testing.T) {
 	}
 
 	// Run all tests in a directory
-	bridge.RunDir(t, "testdata", opts)
+	testscript.RunDir(t, "testdata", opts)
 }
 
 // TestPatternMatching demonstrates using pattern matching for test files.
@@ -46,8 +46,8 @@ func TestPatternMatching(t *testing.T) {
 	t.Skip("Example test - skipped by default")
 
 	// Run all tests matching a pattern
-	opts := bridge.DefaultOptions()
-	bridge.RunPattern(t, "testdata/*.txt", opts)
+	opts := testscript.DefaultOptions()
+	testscript.Run(t, "testdata/*.txt", opts)
 }
 
 // TestWithSnapshots demonstrates working with snapshots.
@@ -56,16 +56,16 @@ func TestWithSnapshots(t *testing.T) {
 	t.Skip("Example test - skipped by default")
 
 	// Setup options for snapshot testing
-	opts := bridge.DefaultOptions()
+	opts := testscript.DefaultOptions()
 	opts.SnapshotDir = "testdata/snapshots"
 
 	// First run: create/update snapshots
 	updateOpts := opts
 	updateOpts.UpdateSnapshots = true
-	bridge.RunDir(t, "testdata", updateOpts)
+	testscript.RunDir(t, "testdata", updateOpts)
 
 	// Second run: verify against snapshots
-	bridge.RunDir(t, "testdata", opts)
+	testscript.RunDir(t, "testdata", opts)
 }
 
 // TestRunnerAPI demonstrates using the Runner API directly.
@@ -74,12 +74,12 @@ func TestRunnerAPI(t *testing.T) {
 	t.Skip("Example test - skipped by default")
 
 	// Create a runner with custom options
-	opts := bridge.DefaultOptions()
+	opts := testscript.DefaultOptions()
 	opts.Pattern = "testdata/*.txt"
 	opts.Verbose = true
 
 	// Create runner and run tests
-	runner := bridge.NewRunner(opts)
+	runner := testscript.NewRunner(opts)
 	runner.Run(t)
 }
 
