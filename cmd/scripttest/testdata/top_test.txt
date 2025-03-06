@@ -1,0 +1,33 @@
+# Test process listing commands across platforms
+# First verify we can create and manage snapshots
+exec pwd
+stdout '/var'  # Verify we get a path starting with /var
+exec env
+stdout 'PWD='  # Verify environment variables are available
+
+# Create and verify snapshot directory
+mkdir $PWD/__snapshots__
+exec ls -la $PWD/__snapshots__
+stdout 'total'  # Verify directory listing works
+
+# Create snapshot and verify directory still exists
+snapshot $PWD/__snapshots__/top-test.json
+exec ls -la $PWD/__snapshots__
+stdout 'total'  # Verify directory still exists
+
+# Test Windows process listing
+[windows] exec tasklist
+[windows] stdout 'Image Name'  # Basic header check
+[windows] stdout 'Memory'      # Additional column check
+[windows] ! stderr .          # Should have no stderr output
+
+# Test Unix process listing
+[unix] exec ps aux
+[unix] stdout 'USER'          # Basic header check
+[unix] stdout 'PID'           # Additional column check
+[unix] stdout '%CPU'          # Additional column check
+[unix] ! stderr .            # Should have no stderr output
+
+# Test error cases
+! exec nonexistent-command
+? stderr 'nonexistent-command'  # Command name should appear in error
