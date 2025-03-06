@@ -1,0 +1,12 @@
+# Test snapshot functionality
+
+# First record a snapshot
+snapshot -timeout=3s
+[linux] [exec:top] top -b -n 1
+[darwin] [exec:top] top -l 1
+[windows] [exec:tasklist] tasklist
+
+# Verify output contains expected strings
+[linux] stdout 'top'
+[darwin] stdout 'Processes'
+[windows] stdout 'Tasks:' 

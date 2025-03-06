@@ -1,0 +1,23 @@
+# Test process listing commands in Docker containers
+# This test must be run with: go run . -docker test testdata/top_docker_test.txt
+
+mkdir $PWD/__snapshots__
+snapshot $PWD/__snapshots__/top-docker-test.json
+
+-- Dockerfile --
+# Unix version
+FROM alpine
+RUN apk add procps
+RUN ps aux
+CMD ["ps", "aux"]
+
+# The output should contain the USER column
+stdout 'USER'
+
+-- Dockerfile.windows --
+FROM mcr.microsoft.com/windows/servercore:ltsc2019
+RUN tasklist
+CMD ["tasklist"]
+
+# The output should contain the Image Name column
+stdout 'Image Name' 

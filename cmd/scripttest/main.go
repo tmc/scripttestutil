@@ -31,9 +31,12 @@ func usage() {
 var doc string
 
 var (
-	verbose bool
-	stream  bool
-	pattern string
+	verbose         bool
+	stream          bool
+	pattern         string
+	useDocker       bool
+	dockerImage     string
+	autoGoToolchain bool
 
 	flagDebug bool
 )
@@ -46,6 +49,9 @@ func main() {
 	flag.BoolVar(&stream, "stream", false, "stream cgpt output")
 	flag.BoolVar(&flagDebug, "debug", false, "debug cgpt output")
 	flag.StringVar(&pattern, "p", "testdata/*.txt", "test file pattern")
+	flag.BoolVar(&useDocker, "docker", false, "run tests in Docker container")
+	flag.StringVar(&dockerImage, "docker-image", "", "Docker image to use (defaults to golang:latest)")
+	flag.BoolVar(&autoGoToolchain, "auto-go", true, "automatically download Go toolchain if needed")
 	flag.Usage = usage
 	flag.Parse()
 
@@ -54,36 +60,43 @@ func main() {
 	}
 
 	cmd := flag.Arg(0)
-	var err error
+	args := flag.Args()[1:]
 
 	switch cmd {
 	case "test", "run":
-		// If pattern provided as argument, override flag
-		if flag.NArg() > 1 {
-			pattern = flag.Arg(1)
+		if err := runTests(args); err != nil {
+			log.Fatal(err)
 		}
-		err = runTest(pattern)
-
 	case "scaffold":
-		dir := "."
-		if flag.NArg() > 1 {
-			dir = flag.Arg(1)
+		if err := runScaffold(args); err != nil {
+			log.Fatal(err)
 		}
-		err = scaffold(dir)
-
 	case "infer":
-		dir := "."
-		if flag.NArg() > 1 {
-			dir = flag.Arg(1)
+		if err := runInfer(args); err != nil {
+			log.Fatal(err)
 		}
-		err = infer(dir)
-
+	case "help":
+		if err := runHelp(args); err != nil {
+			log.Fatal(err)
+		}
+	case "playback":
+		if err := runPlayback(args); err != nil {
+			log.Fatal(err)
+		}
+	case "record":
+		if err := runRecord(args); err != nil {
+			log.Fatal(err)
+		}
+	case "play-cast":
+		if err := runPlayCast(args); err != nil {
+			log.Fatal(err)
+		}
+	case "convert-cast":
+		if err := runConvertCast(args); err != nil {
+			log.Fatal(err)
+		}
 	default:
-		log.Fatalf("unknown command: %s", cmd)
-	}
-
-	if err != nil {
-		log.Fatal(err)
+		usage()
 	}
 }
 
@@ -357,6 +370,142 @@ func runTest(pattern string) error {
 	return nil
 }
 
+func runTestInDocker(pattern string) error {
+	if verbose {
+		log.Printf("running tests in Docker with pattern: %s", pattern)
+	}
+
+	// Get clean work directory
+	dir, err := getWorkDir()
+	if err != nil {
+		return fmt.Errorf("failed to get work directory: %v", err)
+	}
+
+	if verbose {
+		log.Printf("using work directory: %s", dir)
+	}
+
+	// Check for Dockerfile in test files
+	matches, err := filepath.Glob(pattern)
+	if err != nil {
+		return fmt.Errorf("invalid pattern: %v", err)
+	}
+	if len(matches) == 0 {
+		return fmt.Errorf("no files match pattern: %s", pattern)
+	}
+
+	// Look for Dockerfile content in test files
+	var dockerfileContent string
+	for _, file := range matches {
+		data, err := os.ReadFile(file)
+		if err != nil {
+			return fmt.Errorf("failed to read test file %s: %v", file, err)
+		}
+		content := string(data)
+
+		// Look for Dockerfile marker in test file
+		if idx := strings.Index(content, "-- Dockerfile --"); idx != -1 {
+			// Extract Dockerfile content
+			content = content[idx+len("-- Dockerfile --"):]
+			if end := strings.Index(content, "\n--"); end != -1 {
+				dockerfileContent = strings.TrimSpace(content[:end])
+			} else {
+				dockerfileContent = strings.TrimSpace(content)
+			}
+			break
+		}
+	}
+
+	// Create docker-bake.hcl
+	dockerBakeFile := filepath.Join(dir, "docker-bake.hcl")
+	if dockerfileContent != "" {
+		if verbose {
+			log.Printf("using Dockerfile from test file")
+		}
+		bakeContent := fmt.Sprintf(`
+			group "default" {
+				targets = ["scripttest-runner"]
+			}
+
+			target "scripttest-runner" {
+				context = "."
+				dockerfile = "Dockerfile"
+			}
+		`)
+		if err := os.WriteFile(dockerBakeFile, []byte(bakeContent), 0644); err != nil {
+			return fmt.Errorf("failed to write docker-bake.hcl: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "Dockerfile"), []byte(dockerfileContent), 0644); err != nil {
+			return fmt.Errorf("failed to write Dockerfile: %v", err)
+		}
+	} else {
+		// Use default Dockerfile if none found in test files
+		if verbose {
+			log.Printf("using default Dockerfile")
+		}
+		image := dockerImage
+		if image == "" {
+			image = "golang:latest"
+		}
+		content := fmt.Sprintf(`FROM %s
+WORKDIR /app
+COPY . .
+RUN go mod download
+CMD ["go", "test", "-v"]`, image)
+		bakeContent := fmt.Sprintf(`
+			group "default" {
+				targets = ["scripttest-runner"]
+			}
+
+			target "scripttest-runner" {
+				context = "."
+				dockerfile = "Dockerfile"
+			}
+		`)
+		if err := os.WriteFile(dockerBakeFile, []byte(bakeContent), 0644); err != nil {
+			return fmt.Errorf("failed to write docker-bake.hcl: %v", err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, "Dockerfile"), []byte(content), 0644); err != nil {
+			return fmt.Errorf("failed to create Dockerfile: %v", err)
+		}
+	}
+
+	// Build Docker image using buildx bake
+	buildCmd := exec.Command("docker", "buildx", "bake")
+	buildCmd.Dir = dir
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("failed to build Docker image: %v", err)
+	}
+
+	// Run tests in container
+	args := []string{"run", "--rm"}
+
+	// Mount the workspace
+	args = append(args, "-v", fmt.Sprintf("%s:/app", dir))
+
+	// Pass through environment variables
+	args = append(args, "-e", "SCRIPTTEST_PATTERN="+pattern)
+	if verbose {
+		args = append(args, "-e", "VERBOSE=1")
+	}
+	if os.Getenv("UPDATE_SNAPSHOTS") == "1" {
+		args = append(args, "-e", "UPDATE_SNAPSHOTS=1")
+	}
+
+	args = append(args, "scripttest-runner")
+
+	runCmd := exec.Command("docker", args...)
+	runCmd.Stdout = os.Stdout
+	runCmd.Stderr = os.Stderr
+	if err := runCmd.Run(); err != nil {
+		return fmt.Errorf("tests failed in Docker: %v", err)
+	}
+
+	return nil
+}
+
 func applyScaffold(dir string, resp string) error {
 	var files map[string]string
 	if err := json.Unmarshal([]byte(resp), &files); err != nil {
@@ -441,6 +590,11 @@ func getWorkDir() (string, error) {
 }
 
 func initModules(dir string) error {
+	// Check if Go is installed and install it if needed
+	if err := ensureGoToolchain(); err != nil {
+		return fmt.Errorf("failed to ensure Go toolchain: %v", err)
+	}
+
 	// Run go mod tidy
 	cmd := exec.Command("go", "mod", "tidy")
 	cmd.Dir = dir
@@ -454,4 +608,82 @@ func initModules(dir string) error {
 	}
 
 	return nil
+}
+
+func runPlayback(args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("playback requires snapshot file argument")
+	}
+	snapshotPath := args[0]
+
+	// Use scriptreplay for playback
+	cmd := exec.Command("scriptreplay", snapshotPath)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func runTests(args []string) error {
+	// If pattern provided as argument, override flag
+	if len(args) > 0 {
+		pattern = args[0]
+	}
+	if useDocker {
+		return runTestInDocker(pattern)
+	}
+	return runTest(pattern)
+}
+
+func runScaffold(args []string) error {
+	dir := "."
+	if len(args) > 0 {
+		dir = args[0]
+	}
+	return scaffold(dir)
+}
+
+func runInfer(args []string) error {
+	dir := "."
+	if len(args) > 0 {
+		dir = args[0]
+	}
+	return infer(dir)
+}
+
+func runHelp(args []string) error {
+	// Print usage first
+	_, after, _ := strings.Cut(doc, "/*")
+	doc, _, _ := strings.Cut(after, "*/")
+	io.WriteString(os.Stdout, doc)
+	return nil
+}
+
+
+func runRecord(args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("record requires test file and output file arguments")
+	}
+	testFile := args[0]
+	outputFile := args[1]
+	
+	return recordAsciicast(testFile, outputFile)
+}
+
+func runPlayCast(args []string) error {
+	if len(args) != 1 {
+		return fmt.Errorf("play-cast requires asciicast file argument")
+	}
+	asciicastFile := args[0]
+	
+	return playAsciicast(asciicastFile)
+}
+
+func runConvertCast(args []string) error {
+	if len(args) != 2 {
+		return fmt.Errorf("convert-cast requires snapshot file and output file arguments")
+	}
+	snapshotFile := args[0]
+	outputFile := args[1]
+	
+	return convertSnapshotToAsciicast(snapshotFile, outputFile)
 }

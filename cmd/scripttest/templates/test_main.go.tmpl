@@ -11,6 +11,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"io/ioutil"
+	"runtime"
 
 	"rsc.io/script"
 	"rsc.io/script/scripttest"
@@ -22,17 +24,108 @@ func Test(t *testing.T) {
 	// Start with default commands
 	cmds := scripttest.DefaultCmds()
 
-	// Add any inferred commands
-	extendedCmds, err := addInferredCommands(cmds)
-	if err != nil {
-		t.Logf("warning: failed to load extended commands: %v", err)
-	} else {
-		cmds = extendedCmds
-	}
+	// Add snapshot command
+	cmds["snapshot"] = script.Command(
+		script.CmdUsage{
+			Summary: "Record command output",
+			Args:    "[-timeout=duration]",
+		},
+		func(s *script.State, args ...string) (script.WaitFunc, error) {
+			var timeout time.Duration
+			// Parse timeout if provided
+			if len(args) > 0 && strings.HasPrefix(args[0], "-timeout=") {
+				timeoutStr := strings.TrimPrefix(args[0], "-timeout=")
+				var err error
+				timeout, err = time.ParseDuration(timeoutStr)
+				if err != nil {
+					return nil, fmt.Errorf("invalid timeout value: %v", err)
+				}
+				args = args[1:] // Remove timeout argument
+			}
+			
+			// Create snapshot directory if it doesn't exist
+			snapshotDir := filepath.Join("testdata", "__snapshots__")
+			if err := os.MkdirAll(snapshotDir, 0755); err != nil {
+				return nil, fmt.Errorf("failed to create snapshot directory: %v", err)
+			}
+
+			// Generate snapshot filename using test name
+			testName := filepath.Base(s.Getwd())
+			filename := filepath.Join(snapshotDir, testName+".json")
+			
+			// If timeout is specified, wait for the specified duration
+			if timeout > 0 {
+				time.Sleep(timeout)
+			}
+			
+			// Get the command output
+			stdout := s.Stdout()
+			stderr := s.Stderr()
+			
+			// Check if we're updating snapshots
+			if os.Getenv("UPDATE_SNAPSHOTS") == "1" {
+				content := map[string]string{
+					"stdout": stdout,
+					"stderr": stderr,
+				}
+				data, err := json.MarshalIndent(content, "", "  ")
+				if err != nil {
+					return nil, fmt.Errorf("failed to marshal snapshot: %v", err)
+				}
+				if err := ioutil.WriteFile(filename, data, 0644); err != nil {
+					return nil, fmt.Errorf("failed to write snapshot: %v", err)
+				}
+				return func(*script.State) (string, string, error) {
+					return "", "", nil
+				}, nil
+			}
+			
+			// Read existing snapshot
+			data, err := ioutil.ReadFile(filename)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return nil, fmt.Errorf("snapshot does not exist. Run with UPDATE_SNAPSHOTS=1 to create")
+				}
+				return nil, fmt.Errorf("failed to read snapshot: %v", err)
+			}
+			
+			// Parse snapshot content
+			var content map[string]string
+			if err := json.Unmarshal(data, &content); err != nil {
+				return nil, fmt.Errorf("invalid snapshot format: %v", err)
+			}
+			
+			// Compare with current output
+			if content["stdout"] != stdout || content["stderr"] != stderr {
+				return nil, fmt.Errorf("output does not match snapshot")
+			}
+			
+			return func(*script.State) (string, string, error) {
+				return "", "", nil
+			}, nil
+		},
+	)
+
+	// Get default conditions
+	conds := scripttest.DefaultConds()
+
+	// Add OS-specific conditions
+	conds["unix"] = script.OnceCondition("unix system", func() (bool, error) {
+		return runtime.GOOS != "windows", nil
+	})
+	conds["windows"] = script.OnceCondition("windows system", func() (bool, error) {
+		return runtime.GOOS == "windows", nil
+	})
+	conds["darwin"] = script.OnceCondition("darwin system", func() (bool, error) {
+		return runtime.GOOS == "darwin", nil
+	})
+	conds["linux"] = script.OnceCondition("linux system", func() (bool, error) {
+		return runtime.GOOS == "linux", nil
+	})
 
 	engine := &script.Engine{
 		Cmds:  cmds,
-		Conds: scripttest.DefaultConds(),
+		Conds: conds,
 		Quiet: !testing.Verbose(),
 	}
 
@@ -43,20 +136,17 @@ func Test(t *testing.T) {
 
 	// Start with minimal environment
 	env := []string{
-		// TODO: consider adding flags to control this further.
+		"PATH=" + os.Getenv("PATH"), // Keep the host's PATH to find commands
 		"HOME=" + os.Getenv("HOME"),
-		"PATH=" + os.Getenv("PATH"),
 		"TMPDIR=" + os.TempDir(),
 		"SCRIPTTEST_PATTERN=" + pattern,
 	}
 
 	// Add gopath bin paths
-	var paths []string
 	if gopath := os.Getenv("GOPATH"); gopath != "" {
-		paths = append(paths, filepath.Join(gopath, "bin"))
 		env = append(env, "GOPATH=" + gopath)
-		env[0] = "PATH=" + filepath.Join(paths...)
 	}
+
 	t.Log("starting up")
 	scripttest.Test(t, context.Background(), engine, env, pattern)
 }
