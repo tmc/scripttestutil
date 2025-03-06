@@ -1,0 +1,42 @@
+# Docker test example
+# Run this test with: scripttest -docker test testdata/docker_test.txt
+
+# Check if we're running in Docker
+[ -f /.dockerenv ] && echo "Running in Docker container" || echo "Not in Docker"
+stdout 'Running in Docker container'
+
+# Test container environment
+go version
+stdout 'go version'
+
+# Ensure file operations work inside container
+echo "Hello from Docker" > testfile.txt
+cat testfile.txt
+stdout 'Hello from Docker'
+
+# Test environment variable passing
+env TEST_VAR=docker_value
+env | grep TEST_VAR
+stdout 'TEST_VAR=docker_value'
+
+# Test network access
+ping -c 1 8.8.8.8
+status 0
+
+# Create a snapshot inside Docker
+mkdir -p __snapshots__
+snapshot __snapshots__/docker-test.json
+go version
+
+-- Dockerfile --
+FROM golang:1.22-alpine
+# Install additional tools for testing
+RUN apk add --no-cache bash curl git openssh-client ping
+# Set up working directory
+WORKDIR /app
+# Pre-install Go tools
+RUN go install gotest.tools/gotestsum@latest
+# Copy test files
+COPY . .
+# Default command
+CMD ["go", "test", "-v"]
