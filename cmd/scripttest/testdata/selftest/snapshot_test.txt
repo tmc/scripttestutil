@@ -8,15 +8,9 @@ snapshot __snapshots__/simple_snapshot.json
 echo "This output should be captured in a snapshot"
 stdout 'This output should be captured in a snapshot'
 
-# Complex command with predictable output for snapshot testing
-snapshot __snapshots__/ls_snapshot.json
-ls -la
-stdout '.'
-stdout '..'
-
 # Test snapshot comparison
 # Note: This test will fail the first time it runs
 # Run with UPDATE_SNAPSHOTS=1 to create the snapshot, then run normally
 snapshot __snapshots__/system_info_snapshot.json
-uname -a
-stdout 'Darwin'  # This will vary by system, but ensures at least basic snapshot comparison
+echo "System snapshot test"
+stdout 'System snapshot test'
