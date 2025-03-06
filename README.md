@@ -60,6 +60,24 @@ cd cmd/scripttest/testdata/selftest
 
 See the [self-tests README](cmd/scripttest/testdata/selftest/README.md) for more details.
 
+### Go Test Integration
+
+The project includes a bridge package that provides a clean integration between Go's standard testing framework and scripttest tests. This allows you to run scripttest tests as part of your regular Go test suite.
+
+Example usage:
+
+```go
+func TestMyFeature(t *testing.T) {
+    opts := bridge.DefaultOptions()
+    opts.Verbose = testing.Verbose()
+    
+    // Run all scripttest tests in a directory
+    bridge.RunDir(t, "testdata", opts)
+}
+```
+
+See the [bridge README](bridge/README.md) for more details.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
