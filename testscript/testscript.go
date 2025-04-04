@@ -3,12 +3,10 @@
 package testscript
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"rsc.io/script"
@@ -175,9 +173,10 @@ func (r *Runner) runTest(t *testing.T, testFile, testDir string) error {
 
 	// Configure test context
 	ctx := context.Background()
-	if t.Deadline() {
+	deadline, ok := t.Deadline()
+	if ok {
 		var cancel context.CancelFunc
-		ctx, cancel = context.WithDeadline(ctx, t.Deadline())
+		ctx, cancel = context.WithDeadline(ctx, deadline)
 		defer cancel()
 	}
 
@@ -200,14 +199,6 @@ func (r *Runner) runTest(t *testing.T, testFile, testDir string) error {
 
 	// If using Docker, add the Docker-specific pattern
 	testPattern := "testdata/" + filepath.Base(testFile)
-
-	// Capture stdout and stderr for the test output
-	var stdout, stderr bytes.Buffer
-	oldStdout, oldStderr := os.Stdout, os.Stderr
-	if !r.opts.Verbose && !testing.Verbose() {
-		os.Stdout, os.Stderr = &stdout, &stderr
-		defer func() { os.Stdout, os.Stderr = oldStdout, oldStderr }()
-	}
 
 	// Run the test
 	if r.opts.UseDocker {

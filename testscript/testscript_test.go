@@ -10,16 +10,12 @@ import (
 
 // TestBasicUsage demonstrates the basic usage of the testscript package.
 func TestBasicUsage(t *testing.T) {
-	// Skip this test when running go test
-	// Remove this line when you want to actually run the test
-	t.Skip("Example test - skipped by default")
-
 	// Setup test options
 	opts := testscript.DefaultOptions()
 	opts.Verbose = testing.Verbose()
 
 	// Run a single test file
-	testscript.RunFile(t, "testdata/basic.txt", opts)
+	testscript.RunFile(t, "testdata/simple.txt", opts)
 }
 
 // TestWithCustomOptions demonstrates using custom options.
@@ -83,8 +79,11 @@ func TestRunnerAPI(t *testing.T) {
 	runner.Run(t)
 }
 
-// ExampleSetupTestFiles shows how to programmatically create test files.
-func ExampleSetupTestFiles() {
+// TestSetupTestFiles shows how to programmatically create test files.
+func TestSetupTestFiles(t *testing.T) {
+	// Skip this test when running go test
+	t.Skip("Example test - skipped by default")
+	
 	// Create test directory
 	os.MkdirAll("testdata", 0755)
 

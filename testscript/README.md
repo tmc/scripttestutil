@@ -50,6 +50,30 @@ testscript.RunDir(t, "testdata", opts)
 testscript.Run(t, "testdata/api/*.txt", opts)
 ```
 
+## Running Tests in This Repository
+
+This repository contains several test files in the testscript package:
+
+```bash
+# Run all tests in all categories
+go test -v ./testscript -run TestAll
+
+# Run tests by category
+go test -v ./testscript -run TestWithTag/gotools   # Run all Go tools tests
+go test -v ./testscript -run TestWithTag/spinner   # Run all spinner tests
+
+# Run individual test groups
+go test -v ./testscript -run TestGoTools      # Run all Go tools tests
+go test -v ./testscript -run TestSpinner      # Run all spinner tests
+
+# Run specific tests
+go test -v ./testscript -run TestSpecificGoTool   # Run a specific Go tool test
+go test -v ./testscript -run TestIndividualSpinnerTests/Basic  # Run basic spinner test
+
+# Update snapshots
+UPDATE_SNAPSHOTS=1 go test -v ./testscript -run TestAll
+```
+
 ## Options
 
 ```go
