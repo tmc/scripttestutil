@@ -78,6 +78,46 @@ func TestMyFeature(t *testing.T) {
 
 See the [testscript README](testscript/README.md) for more details.
 
+### Reusable Command Sets
+
+The project includes a commands package with reusable command sets that can be added to your scripttest tests. These provide specialized functionality for various domains.
+
+#### Available Command Sets:
+
+- **Expect Commands**: Integration with the expect utility for interacting with interactive programs.
+
+Example usage:
+
+```go
+import (
+    "github.com/tmc/scripttestutil/commands"
+    "github.com/tmc/scripttestutil/testscript"
+)
+
+func TestWithExpect(t *testing.T) {
+    opts := testscript.DefaultOptions()
+    
+    // Register expect commands
+    opts.SetupHook = func(cmds map[string]script.Cmd) {
+        commands.RegisterExpect(cmds)
+    }
+    
+    testscript.RunDir(t, "testdata", opts)
+}
+```
+
+Then in your test file:
+
+```
+# Interact with Python using expect
+expect:spawn python3
+expect:expect ">>>" 5
+expect:send "print('Hello, World!')"
+expect:expect "Hello, World!" 5
+```
+
+See the [expect README](commands/expect/README.md) for more details.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.

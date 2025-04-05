@@ -1,0 +1,30 @@
+# Test interacting with Python using the expect command set
+
+# Start a Python interpreter
+expect:spawn python3
+expect:expect ">>>" 5
+
+# Define a simple function
+expect:send "def add(a, b):"
+expect:expect "..." 5
+expect:send "    return a + b"
+expect:expect ">>>" 5
+
+# Test the function
+expect:send "add(5, 10)"
+expect:expect "15" 5
+expect:expect ">>>" 5
+
+# Try a more complex interaction
+expect:send "import sys"
+expect:expect ">>>" 5
+expect:send "sys.version"
+expect:expect "Python" 5
+expect:expect ">>>" 5
+
+# Exit Python
+expect:send "exit()"
+
+# Test complete
+echo "Python interaction test completed successfully"
+stdout "Python interaction test completed successfully"

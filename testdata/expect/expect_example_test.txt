@@ -1,0 +1,35 @@
+# Example test demonstrating the expect command set
+# This test shows how to interact with an interactive program (python)
+
+# Start a Python interpreter
+expect:spawn python3
+expect:expect ">>>" 5
+
+# Run a simple calculation
+expect:send "print(40 + 2)"
+expect:expect "42" 5
+expect:expect ">>>" 5
+
+# Try some more complex interaction
+expect:send "import os"
+expect:expect ">>>" 5
+
+expect:send "os.getcwd()"
+expect:expect ">>>" 5
+
+# Create a simple function 
+expect:send "def greet(name):"
+expect:expect "..." 5
+expect:send "    print(f'Hello, {name}!')"
+expect:expect ">>>" 5
+
+# Test the function
+expect:send "greet('World')"
+expect:expect "Hello, World!" 5
+
+# Exit the Python interpreter
+expect:send "exit()"
+
+# Verify test completion
+echo "Expect example test completed successfully"
+stdout "Expect example test completed successfully"

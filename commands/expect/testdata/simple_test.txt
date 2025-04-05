@@ -1,0 +1,11 @@
+# Basic test for expect commands
+
+# Spawn echo
+expect:script '
+spawn echo "Hello, world!"
+expect "Hello, world!"
+'
+
+# Make sure the test passes
+echo "Expect test completed successfully"
+stdout "Expect test completed successfully"

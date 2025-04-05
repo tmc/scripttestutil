@@ -1,0 +1,12 @@
+# Simple test using expect command set
+# This demonstrates interacting with the echo command
+
+# Spawn echo with some text
+expect:spawn echo "Hello from expect"
+
+# Wait for the output
+expect:expect "Hello from expect" 5
+
+# Test complete
+echo "Test completed successfully"
+stdout "Test completed successfully"
