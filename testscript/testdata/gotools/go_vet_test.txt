@@ -1,0 +1,45 @@
+# Test basic usage of go vet
+mkdir vettest
+cd vettest
+
+# Create a file with a vet issue (unreachable code)
+cat > vet_issue.go <<EOF
+package main
+
+import "fmt"
+
+func neverReturns() {
+    for {
+        // infinite loop
+    }
+    fmt.Println("This will never be executed") // Unreachable code
+}
+
+func main() {
+    fmt.Println("Hello, World!")
+}
+EOF
+
+# Run go vet and expect issues
+! go vet vet_issue.go
+stderr 'unreachable code'
+
+# Create a file without vet issues
+cat > no_issue.go <<EOF
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, World!")
+}
+EOF
+
+# Run go vet and expect no issues
+go vet no_issue.go
+! stderr .
+! stdout .
+
+# Run the program without issues
+go run no_issue.go
+stdout 'Hello, World!'

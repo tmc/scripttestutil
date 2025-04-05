@@ -35,6 +35,10 @@ type Options struct {
 
 	// SnapshotDir specifies the directory for snapshots (default: testdata/__snapshots__)
 	SnapshotDir string
+	
+	// SetupHook is a function called to set up additional commands or conditions
+	// It receives the engine's command map which can be extended with custom commands
+	SetupHook func(cmds map[string]script.Cmd)
 }
 
 // DefaultOptions returns the default test options.
@@ -47,6 +51,7 @@ func DefaultOptions() Options {
 		Verbose:         false,
 		EnvVars:         make(map[string]string),
 		SnapshotDir:     "testdata/__snapshots__",
+		SetupHook:       nil,
 	}
 }
 
@@ -157,6 +162,11 @@ func (r *Runner) runTest(t *testing.T, testFile, testDir string) error {
 
 	// Create a snapshot handler
 	setupSnapshotCommand(cmds, r.opts.SnapshotDir)
+	
+	// Call the setup hook if provided
+	if r.opts.SetupHook != nil {
+		r.opts.SetupHook(cmds)
+	}
 
 	// Start with default conditions
 	conds := scripttest.DefaultConds()

@@ -1,0 +1,11 @@
+# Simple test for the testscript package
+
+# Test echo command
+echo "Hello from testscript package"
+stdout 'Hello from testscript package'
+! stderr .
+
+# Test environment variables
+env TEST_ENV=test_value
+env | grep TEST_ENV
+stdout 'TEST_ENV=test_value'

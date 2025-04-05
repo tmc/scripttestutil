@@ -1,0 +1,56 @@
+# Test go build and go run functionality
+mkdir buildtest
+cd buildtest
+
+# Create a simple program
+cat > hello.go <<EOF
+package main
+
+import (
+	"fmt"
+	"os"
+)
+
+func main() {
+	if len(os.Args) > 1 {
+		fmt.Printf("Hello, %s!\n", os.Args[1])
+	} else {
+		fmt.Println("Hello, World!")
+	}
+}
+EOF
+
+# Build the program
+go build hello.go
+exists hello
+
+# Run the compiled binary
+./hello
+stdout 'Hello, World!'
+
+# Run with arguments
+./hello Gopher
+stdout 'Hello, Gopher!'
+
+# Test go run directly
+go run hello.go
+stdout 'Hello, World!'
+
+# Test go run with arguments
+go run hello.go Developer
+stdout 'Hello, Developer!'
+
+# Create a program with build errors
+cat > error.go <<EOF
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("This won't compile"
+}
+EOF
+
+# Build should fail
+! go build error.go
+stderr 'syntax error'

@@ -1,0 +1,38 @@
+# Test simple usage of gofmt
+mkdir testpkg
+cd testpkg
+
+# Create a malformatted Go file
+cat > bad.go <<EOF
+package main
+
+import (
+    "fmt"
+"os"
+)
+
+func main(){
+fmt.Println("Hello, World!")
+    os.Exit(0)
+}
+EOF
+
+# Verify the file exists
+exists bad.go
+
+# Run gofmt on it
+gofmt bad.go > good.go
+
+# Check that the formatted file is different
+! cmp bad.go good.go
+
+# Verify the contents of the formatted file is as expected
+grep -q 'import (' good.go
+grep -q '	"fmt"' good.go
+grep -q '	"os"' good.go
+grep -q 'func main() {' good.go
+grep -q '	fmt.Println' good.go
+
+# Try running the formatted code
+go run good.go
+stdout 'Hello, World!'

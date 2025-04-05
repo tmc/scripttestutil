@@ -1,0 +1,112 @@
+# Test custom spinner characters and colors
+mkdir customtest
+cd customtest
+
+# Initialize a new module
+go mod init example.com/customtest
+exists go.mod
+
+# Create a program with custom spinner characters and colors
+cat > main.go <<EOF
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/tmc/spinner"
+)
+
+func main() {
+	// Create custom character set
+	customChars := []string{"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"}
+	
+	// Create spinner with custom character set
+	s := spinner.New(customChars, 200*time.Millisecond)
+	
+	// Set color attributes
+	s.Color("red", "bold")
+	s.Suffix = " Loading with custom spinner..."
+	s.FinalMSG = "Custom spinner complete!\n"
+	
+	fmt.Println("Starting custom spinner")
+	
+	// Start the spinner
+	s.Start()
+	
+	// Simulate work
+	time.Sleep(2 * time.Second)
+	
+	// Stop the spinner
+	s.Stop()
+	
+	fmt.Println("Custom spinner test successful")
+	
+	// Create another spinner with different preset
+	fmt.Println("Testing with preset character set...")
+	s2 := spinner.New(spinner.CharSets[11], 100*time.Millisecond)
+	s2.Color("blue")
+	s2.Start()
+	time.Sleep(2 * time.Second)
+	s2.Stop()
+	
+	fmt.Println("All spinner tests completed")
+}
+EOF
+
+# Add the spinner dependency
+go get github.com/tmc/spinner
+exists go.sum
+
+# Build the program
+go build
+exists customtest
+
+# Create a simple test program that just verifies the code compiles
+cat > verify.go <<EOF
+package main
+
+import (
+	"fmt"
+	
+	"github.com/tmc/spinner"
+)
+
+func main() {
+	// Just create different spinner types to verify the code compiles
+	customChars := []string{"A", "B", "C", "D"}
+	_ = spinner.New(customChars, 100*time.Millisecond)
+	_ = spinner.New(spinner.CharSets[0], 100*time.Millisecond)
+	
+	fmt.Println("Custom spinner code compiled successfully")
+}
+EOF
+
+# This will fail since we're missing the time import
+! go run verify.go
+stderr 'undefined: time'
+
+# Fix the code and verify it compiles
+cat > verify_fixed.go <<EOF
+package main
+
+import (
+	"fmt"
+	"time"
+	
+	"github.com/tmc/spinner"
+)
+
+func main() {
+	// Just create different spinner types to verify the code compiles
+	customChars := []string{"A", "B", "C", "D"}
+	_ = spinner.New(customChars, 100*time.Millisecond)
+	_ = spinner.New(spinner.CharSets[0], 100*time.Millisecond)
+	
+	fmt.Println("Custom spinner code compiled successfully")
+}
+EOF
+
+# Run the fixed verify program
+go run verify_fixed.go
+stdout 'Custom spinner code compiled successfully'

@@ -1,0 +1,76 @@
+# Test using github.com/tmc/spinner package
+mkdir spinnertest
+cd spinnertest
+
+# Initialize a new module
+go mod init example.com/spinnertest
+exists go.mod
+grep -q 'module example.com/spinnertest' go.mod
+
+# Create a simple program that uses the spinner package
+cat > main.go <<EOF
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/tmc/spinner"
+)
+
+func main() {
+	// Create a new spinner
+	s := spinner.New(spinner.CharSets[9], 100*time.Millisecond)
+	
+	// Set some options
+	s.Suffix = " Loading..."
+	s.FinalMSG = "Complete!\n"
+	
+	// Start the spinner
+	s.Start()
+	
+	// Do some work
+	time.Sleep(2 * time.Second)
+	
+	// Stop the spinner
+	s.Stop()
+	
+	fmt.Println("Spinner test successful")
+}
+EOF
+
+# Add the spinner dependency
+go get github.com/tmc/spinner
+exists go.sum
+grep -q 'github.com/tmc/spinner' go.sum
+
+# Build the program
+go build
+exists spinnertest
+
+# Verify that go.mod has been updated with the dependency
+grep -q 'require github.com/tmc/spinner' go.mod
+
+# Note: We don't run the program in tests as the spinner output
+# could make testing unreliable, but we verify it builds correctly
+
+# Create a simple version that just prints success for testing
+cat > simple.go <<EOF
+package main
+
+import (
+	"fmt"
+	
+	"github.com/tmc/spinner"
+)
+
+func main() {
+	// Just verify we can import the package
+	_ = spinner.CharSets
+	fmt.Println("Spinner package successfully imported")
+}
+EOF
+
+# Run the simple version
+go run simple.go
+stdout 'Spinner package successfully imported'

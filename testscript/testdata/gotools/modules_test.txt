@@ -1,0 +1,42 @@
+# Test go modules functionality
+mkdir modtest
+cd modtest
+
+# Initialize a new module
+go mod init example.com/modtest
+exists go.mod
+grep -q 'module example.com/modtest' go.mod
+
+# Create a simple program that uses an external dependency
+cat > main.go <<EOF
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/fatih/color"
+)
+
+func main() {
+	color.Green("Hello from colored output!")
+	fmt.Println("Module test successful")
+	os.Exit(0)
+}
+EOF
+
+# Add the dependency
+go get github.com/fatih/color
+exists go.sum
+grep -q 'github.com/fatih/color' go.sum
+
+# Build the program (which will download dependencies)
+go build
+exists modtest
+
+# Verify that go.mod has been updated with the dependency
+grep -q 'require github.com/fatih/color' go.mod
+
+# Run the program
+./modtest
+stdout 'Module test successful'
