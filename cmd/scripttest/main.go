@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	_ "rsc.io/script/scripttest" // not strictly necessary but nice for go odc tool
@@ -32,13 +30,10 @@ var doc string
 
 var (
 	verbose         bool
-	stream          bool
 	pattern         string
 	useDocker       bool
 	dockerImage     string
 	autoGoToolchain bool
-
-	flagDebug bool
 )
 
 func main() {
@@ -46,8 +41,6 @@ func main() {
 	log.SetFlags(0)
 
 	flag.BoolVar(&verbose, "v", false, "verbose output")
-	flag.BoolVar(&stream, "stream", false, "stream cgpt output")
-	flag.BoolVar(&flagDebug, "debug", false, "debug cgpt output")
 	flag.StringVar(&pattern, "p", "testdata/*.txt", "test file pattern")
 	flag.BoolVar(&useDocker, "docker", false, "run tests in Docker container")
 	flag.StringVar(&dockerImage, "docker-image", "", "Docker image to use (defaults to golang:latest)")
@@ -114,17 +107,14 @@ func scaffold(dir string) error {
 		log.Printf("command info: %s", info)
 	}
 
-	prompt, err := generateScaffoldPrompt(info)
+	// Use a simple template approach instead of AI
+	resp, err := generateResponse("scaffold", "")
 	if err != nil {
-		return fmt.Errorf("failed to load prompt cgpt: %v", err)
-	}
-	resp, err := queryCgpt(prompt, "")
-	if err != nil {
-		return fmt.Errorf("failed to query cgpt: %v", err)
+		return fmt.Errorf("failed to generate scaffold: %v", err)
 	}
 
 	if verbose {
-		log.Printf("cgpt response: %s", resp)
+		log.Printf("generated response: %s", resp)
 	}
 
 	return applyScaffold(dir, resp)
@@ -171,116 +161,104 @@ func loadOrInferCommandInfo(dir string) (string, error) {
 }
 
 func inferCommandInfo(dir string) (string, error) {
-	content, err := getCodebaseContent(dir)
-	if err != nil {
-		return "", fmt.Errorf("failed to get codebase content: %v", err)
+	// Simple command info generation based on file analysis
+	pkgs := findMainPackages(dir)
+	
+	commands := make([]map[string]string, 0)
+	for _, pkg := range pkgs {
+		cmd := map[string]string{
+			"name":    filepath.Base(pkg),
+			"summary": "Command entry point",
+			"args":    "[-flags] [arguments]",
+		}
+		commands = append(commands, cmd)
 	}
-
-	prompt := fmt.Sprintf("Analyze this codebase and identify key binary entrypoints and commnds:\n\n%s\n\n", content)
-	prompt += `output a json representation matching this datatype:
-type Commands = CommandInfo[];
-type CommandInfo = {
-  name: string;    // command name
-  summary: string; // usage summary
-  args: string;    // argument pattern
-}`
-	res, err := queryCgpt(prompt, "```json\n[")
+	
+	// Convert to JSON
+	data, err := json.MarshalIndent(commands, "", "  ")
 	if err != nil {
-		return "", fmt.Errorf("failed to run cgpt: %w", err)
+		return "", fmt.Errorf("failed to marshal command info: %v", err)
 	}
-	return res, nil
+	
+	return string(data), nil
 }
 
 func getCodebaseContent(dir string) (string, error) {
-	// Check if code-to-gpt.sh exists in PATH
-	scriptPath, err := exec.LookPath("code-to-gpt.sh")
-	if err != nil {
-		gopath := os.Getenv("GOPATH")
-		if gopath == "" {
-			gopath = filepath.Join(os.Getenv("HOME"), "go")
-			if runtime.GOOS == "windows" {
-				gopath = filepath.Join(os.Getenv("USERPROFILE"), "go")
+	// Simple implementation to get relevant Go files
+	var content strings.Builder
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			// Skip .git, vendor, etc.
+			if info.Name() == ".git" || info.Name() == "vendor" || info.Name() == "node_modules" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if filepath.Ext(path) == ".go" {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil // Skip files we can't read
+			}
+			content.WriteString(fmt.Sprintf("// File: %s\n", path))
+			content.WriteString(string(data))
+			content.WriteString("\n\n")
+		}
+		return nil
+	})
+	return content.String(), err
+}
+
+// findMainPackages finds directories with Go main packages
+func findMainPackages(dir string) []string {
+	var pkgs []string
+	filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			// Skip .git, vendor, etc.
+			if info.Name() == ".git" || info.Name() == "vendor" || info.Name() == "node_modules" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if filepath.Ext(path) == ".go" {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return nil
+			}
+			content := string(data)
+			// Simple check for main package and main function
+			if strings.Contains(content, "package main") && strings.Contains(content, "func main()") {
+				pkgs = append(pkgs, filepath.Dir(path))
 			}
 		}
-
-		binDir := filepath.Join(gopath, "bin")
-		scriptPath = filepath.Join(binDir, "code-to-gpt.sh")
-
-		if err := downloadScript(scriptPath); err != nil {
-			return "", fmt.Errorf("failed to download code-to-gpt.sh: %v", err)
-		}
-
-		// Make executable
-		if err := os.Chmod(scriptPath, 0755); err != nil {
-			return "", fmt.Errorf("failed to make script executable: %v", err)
-		}
-	}
-
-	args := []string{"--", ":!.scripttest_history*"}
-	cmd := exec.Command(scriptPath, args...)
-	cmd.Dir = dir
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", fmt.Errorf("failed to run code-to-gpt: %v", err)
-	}
-	return string(output), nil
+		return nil
+	})
+	return pkgs
 }
 
-func downloadScript(destPath string) error {
-	// Create bin directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-		return err
+func generateResponse(prompt, prefill string) (string, error) {
+	// Simple template-based response generator instead of calling external tools
+	// Just return basic templates based on type of query
+	if strings.Contains(prompt, "CommandInfo") {
+		// Return a simple command info template
+		return `[
+  {
+    "name": "main",
+    "summary": "Main command entry point",
+    "args": "[-flags] [arguments]"
+  }
+]`, nil
 	}
-
-	// Download script from a trusted source
-	resp, err := http.Get("https://raw.githubusercontent.com/tmc/misc/master/code-to-gpt/code-to-gpt.sh")
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	out, err := os.Create(destPath)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, resp.Body)
-	return err
-}
-
-func queryCgpt(prompt, prefill string) (string, error) {
-	// TODO: add history file support
-	args := []string{
-		// "-I", historyFile,
-		// "-O", historyFile,
-	}
-
-	if flagDebug {
-		args = append(args, "--debug")
-	}
-
-	if prefill != "" {
-		args = append(args, "--prefill", prefill)
-	} else {
-		args = append(args, "--prefill", "```json\n{")
-	}
-
-	cmd := exec.Command("cgpt", args...)
-
-	var output strings.Builder
-	var stderr io.Writer = new(strings.Builder)
-	cmd.Stdin = strings.NewReader(prompt)
-	cmd.Stdout = &output
-	if stream {
-		stderr = os.Stderr
-		cmd.Stdout = io.MultiWriter(&output, stderr)
-	}
-	cmd.Stderr = stderr
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("cgpt query failed: %v", err)
-	}
-	return extractJSON(output.String()), nil
+	
+	// For scaffold, return a simple test template
+	return `{
+  "test_main.go": "package main_test\n\nimport (\n\t\"testing\"\n\n\t\"github.com/tmc/scripttestutil/testscript\"\n)\n\nfunc TestScripts(t *testing.T) {\n\ttestscript.RunDir(t, \"testdata\")\n}"
+}`, nil
 }
 
 func runTest(pattern string) error {
