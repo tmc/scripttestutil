@@ -1,0 +1,5 @@
+# Test file operations
+echo "File content" > test_file.txt
+cat test_file.txt
+stdout 'File content'
+exists test_file.txt

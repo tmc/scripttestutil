@@ -1,0 +1,9 @@
+# Test basic greeting
+./bin/cli-app
+stdout 'Hello, World!'
+! stderr .
+
+# Test with custom name
+./bin/cli-app -name Alice
+stdout 'Hello, Alice!'
+! stderr .

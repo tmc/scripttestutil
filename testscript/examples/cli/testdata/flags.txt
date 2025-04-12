@@ -1,0 +1,23 @@
+# Test verbose flag
+./bin/cli-app -verbose
+stdout 'Hello, World!'
+stderr 'About to print greeting 1 times'
+
+# Test count flag
+./bin/cli-app -count 3
+stdout 'Hello, World!'
+stdout 'Hello, World!'
+stdout 'Hello, World!'
+! stderr .
+
+# Test multiple flags
+./bin/cli-app -name Bob -count 2 -verbose
+stdout 'Hello, Bob!'
+stdout 'Hello, Bob!'
+stderr 'About to print greeting 2 times'
+
+# Test extra arguments
+./bin/cli-app arg1 arg2
+stdout 'Hello, World!'
+stdout 'Extra arguments: arg1, arg2'
+! stderr .

@@ -1,0 +1,9 @@
+# Basic echo test
+echo "Hello from testscript!"
+stdout 'Hello from testscript!'
+! stderr .
+
+# Test with environment variable
+env TST_VAR=working
+env | grep TST_VAR
+stdout 'TST_VAR=working'

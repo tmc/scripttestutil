@@ -3,7 +3,6 @@ package main_test
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
 	"testing"
 
 	"github.com/tmc/scripttestutil/testscript"

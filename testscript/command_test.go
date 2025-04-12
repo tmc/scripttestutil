@@ -25,8 +25,8 @@ func ExampleOptions_SetupHook() {
 	// SetupHook configured to register expect commands
 }
 
-// ExampleRunWithCommands demonstrates how to run tests with custom commands
-func ExampleRunWithCommands() {
+// Example_testscriptWithCommands demonstrates how to run tests with custom commands
+func Example_testscriptWithCommands() {
 	// This won't actually run in the example, just showing the pattern
 	fmt.Println("Running directory with custom commands:")
 	fmt.Println(`
